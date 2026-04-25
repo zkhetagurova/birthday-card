@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Дорогая Вера, с днем рождения!</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+  <style>
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #f7f2e8;
+      color: #213126;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      padding: 18px 22px 10px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.4rem, 3vw, 2.25rem);
+      font-weight: 750;
+      letter-spacing: 0;
+    }
+
+    p {
+      max-width: 760px;
+      margin: 6px 0 0;
+      line-height: 1.45;
+      color: #526051;
+    }
+
+    #garden {
+      position: relative;
+      min-height: 620px;
+    }
+
+    .tooltip {
+      position: fixed;
+      pointer-events: none;
+      transform: translate(14px, 14px);
+      background: rgba(255, 250, 238, 0.94);
+      border: 1px solid rgba(33, 49, 38, 0.22);
+      border-radius: 8px;
+      padding: 9px 11px;
+      box-shadow: 0 12px 30px rgba(32, 37, 31, 0.14);
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 160ms ease;
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Дорогая Вера, с днем рождения!</h1>
+    </header>
+    <section id="garden" aria-label="Анимированная визуализация сада желаний"></section>
+  </main>
+  <div class="tooltip" id="tooltip"></div>
+
+  <script>
+    const gardenData = [
+      { label: "Здоровье", type: "body", frequency: 82, intensity: 8, color: "#f4a6c1", leafCount: 3 },
+      { label: "Деньги", type: "home", frequency: 68, intensity: 7, leafCount: 3 },
+      { label: "Семья", type: "heart", frequency: 100, intensity: 9, bloomType: "organic", leafCount: 4, subcategories: ["Пятерки в школе"] },
+      { label: "Карьера", type: "home", frequency: 86, intensity: 8, leafCount: 4 },
+      { label: "Лыжи", type: "body", frequency: 58, intensity: 5, leafCount: 3, subcategories: ["Новые трассы", "Вельвет", "Погода для катания"] },
+      { label: "Датавиз", type: "mind", frequency: 92, intensity: 10, leafCount: 4 },
+      {
+        label: "Красота",
+        type: "heart",
+        frequency: 90,
+        intensity: 6,
+        color: "#d5222f",
+        leafCount: 4,
+        subcategories: ["новая коллекция VASSA", "весенние образы"]
+      }
+    ];
+
+    const flowerPalette = [
+      "#4f8f78",
+      "#d98855",
+      "#c7546a",
+      "#8d69b3",
+      "#5c77b8",
+      "#df7fa8",
+      "#f1c75b"
+    ];
+
+    const bloomTypes = [
+      "round",
+      "long",
+      "star",
+      "layered",
+      "wide",
+      "thin",
+      "compact"
+    ];
+
+    const tooltip = document.querySelector("#tooltip");
+    let flowers = [];
+
+    function setup() {
+      const holder = document.querySelector("#garden");
+      const canvas = createCanvas(holder.clientWidth, holder.clientHeight);
+      canvas.parent("garden");
+      angleMode(RADIANS);
+      textFont("system-ui");
+      buildFlowers();
+    }
+
+    function windowResized() {
+      const holder = document.querySelector("#garden");
+      resizeCanvas(holder.clientWidth, holder.clientHeight);
+      buildFlowers();
+    }
+
+    function buildFlowers() {
+      const gap = width / (gardenData.length + 1);
+      flowers = gardenData.map((d, i) => ({
+        ...d,
+        x: gap * (i + 1),
+        ground: height * 0.88 + random(-10, 12),
+        stem: map(d.frequency, 0, 100, 105, height * 0.4),
+        bloom: map(d.intensity, 0, 10, 28, 58),
+        bloomType: d.bloomType || bloomTypes[i % bloomTypes.length],
+        flowerColor: d.color || flowerPalette[i % flowerPalette.length],
+        phase: random(TWO_PI),
+        sway: map(d.frequency, 0, 100, 0.012, 0.038),
+        leaves: buildLeaves(d, i),
+        petals: Array.from({ length: Math.max(7, d.intensity + 3) }, (_, petalIndex) => ({
+          width: map((petalIndex * 3 + i) % 7, 0, 6, 0.34, 0.58),
+          height: map((petalIndex * 5 + i) % 8, 0, 7, 0.72, 1.16)
+        }))
+      }));
+    }
+
+    function buildLeaves(d, flowerIndex) {
+      const leafTotal = Math.max(d.leafCount || 0, d.subcategories ? d.subcategories.length : 0);
+
+      return Array.from({ length: leafTotal }, (_, leafIndex) => ({
+        label: d.subcategories ? d.subcategories[leafIndex] : null,
+        side: (leafIndex + flowerIndex) % 2 === 0 ? -1 : 1,
+        progress: map(leafIndex + 1, 1, leafTotal + 1, 0.22, 0.72),
+        width: 34 + ((leafIndex + flowerIndex) % 3) * 8,
+        height: 15 + ((leafIndex + flowerIndex) % 3) * 3
+      }));
+    }
+
+    function draw() {
+      background("#f7f2e8");
+
+      let hovered = null;
+      for (const flower of flowers) {
+        const flowerHover = drawFlower(flower);
+        hovered = flowerHover || hovered;
+      }
+
+      drawLegend();
+
+      if (hovered) {
+        tooltip.style.opacity = 1;
+        tooltip.style.left = `${mouseX}px`;
+        tooltip.style.top = `${mouseY}px`;
+        if (hovered.subcategory) {
+          tooltip.innerHTML = `<strong>${hovered.label}</strong><br>${hovered.subcategory}`;
+        } else {
+          tooltip.innerHTML = `<strong>${hovered.label}</strong><br>Высота: ${hovered.frequency}<br>Сила цветения: ${hovered.intensity}`;
+        }
+      } else {
+        tooltip.style.opacity = 0;
+      }
+    }
+
+    function drawLegend() {
+      const legendX = 22;
+      const legendY = 22;
+      const legendWidth = min(560, width - 44);
+      const legendHeight = 124;
+      const iconX = legendX + 32;
+      const textX = legendX + 68;
+      const textWidth = legendWidth - 86;
+
+      push();
+      noStroke();
+      fill("rgba(255, 250, 238, 0.78)");
+      rect(legendX, legendY, legendWidth, legendHeight, 8);
+      fill("rgba(33, 49, 38, 0.06)");
+      rect(legendX, legendY, legendWidth, 1);
+
+      fill("#213126");
+      textAlign(LEFT, TOP);
+      textStyle(NORMAL);
+      textSize(13);
+      drawLegendFlower(iconX, legendY + 31);
+      text("Каждый цветок - одна категория желаний.", textX, legendY + 21, textWidth);
+
+      fill("rgba(33, 49, 38, 0.12)");
+      circle(iconX, legendY + 58, 3);
+
+      drawLegendLeaf(iconX - 5, legendY + 78);
+      fill("#213126");
+      text("Листья - конкретные области внутри категории.", textX, legendY + 66, textWidth);
+
+      fill("rgba(33, 49, 38, 0.12)");
+      circle(iconX, legendY + 103, 3);
+
+      fill("#c7546a");
+      circle(iconX, legendY + 107, 14 + sin(frameCount * 0.08) * 2.5);
+      fill("#213126");
+      text("Пусть все цветы растут и распускаются!", textX, legendY + 97, textWidth);
+      pop();
+    }
+
+    function drawLegendFlower(x, y) {
+      push();
+      translate(x, y);
+      noStroke();
+      fill("#8d69b3");
+      for (let i = 0; i < 6; i++) {
+        push();
+        rotate(i * TWO_PI / 6);
+        ellipse(0, -9, 8, 16);
+        pop();
+      }
+      fill("#f1c75b");
+      circle(0, 0, 10);
+      pop();
+    }
+
+    function drawLegendLeaf(x, y) {
+      push();
+      translate(x, y);
+      rotate(-0.32);
+      noStroke();
+      fill("#6d9b68");
+      drawOrganicLeaf(34, 15);
+      pop();
+    }
+
+    function drawFlower(flower) {
+      const headY = flower.ground - flower.stem;
+      const breeze = sin(frameCount * flower.sway + flower.phase) * 11;
+      const headX = flower.x + breeze;
+      const bloomRotation = sin(frameCount * 0.01 + flower.phase) * 0.08;
+      const stem = getStemCurve(flower, headX, headY);
+      let hoveredLeaf = null;
+
+      stroke("#557052");
+      strokeWeight(5);
+      noFill();
+      bezier(stem.base.x, stem.base.y, stem.controlA.x, stem.controlA.y, stem.controlB.x, stem.controlB.y, stem.head.x, stem.head.y);
+
+      hoveredLeaf = drawStemLeaves(flower, stem);
+
+      push();
+      translate(headX, headY);
+      rotate(bloomRotation);
+      for (let i = 0; i < flower.petals.length; i++) {
+        const petal = flower.petals[i];
+        push();
+        rotate(i * TWO_PI / flower.petals.length);
+        noStroke();
+        fill(flower.flowerColor);
+        drawPetal(flower.bloomType, flower.bloom, petal);
+        pop();
+      }
+      noStroke();
+      fill("#f1c75b");
+      circle(0, 0, flower.bloom * 0.58);
+      pop();
+
+      noStroke();
+      fill("#344435");
+      textAlign(CENTER);
+      textSize(13);
+      text(flower.label, flower.x, flower.ground + 24);
+
+      if (hoveredLeaf) {
+        return { ...flower, subcategory: hoveredLeaf };
+      }
+
+      if (dist(mouseX, mouseY, headX, headY) < flower.bloom + 16) {
+        return flower;
+      }
+
+      return null;
+    }
+
+    function getStemCurve(flower, headX, headY) {
+      return {
+        base: { x: flower.x, y: flower.ground },
+        controlA: { x: flower.x - 16, y: flower.ground - flower.stem * 0.35 },
+        controlB: { x: headX + 14, y: flower.ground - flower.stem * 0.7 },
+        head: { x: headX, y: headY }
+      };
+    }
+
+    function pointOnStem(stem, progress) {
+      return {
+        x: bezierPoint(stem.base.x, stem.controlA.x, stem.controlB.x, stem.head.x, progress),
+        y: bezierPoint(stem.base.y, stem.controlA.y, stem.controlB.y, stem.head.y, progress)
+      };
+    }
+
+    function tangentOnStem(stem, progress) {
+      const tangentX = bezierTangent(stem.base.x, stem.controlA.x, stem.controlB.x, stem.head.x, progress);
+      const tangentY = bezierTangent(stem.base.y, stem.controlA.y, stem.controlB.y, stem.head.y, progress);
+      const length = max(1, sqrt(tangentX * tangentX + tangentY * tangentY));
+
+      return {
+        x: tangentX / length,
+        y: tangentY / length
+      };
+    }
+
+    function drawPetal(type, bloom, petal) {
+      const petalWidth = bloom * petal.width;
+      const petalHeight = bloom * petal.height;
+
+      if (type === "long") {
+        ellipse(0, -bloom * 0.64, petalWidth * 0.78, petalHeight * 1.22);
+        return;
+      }
+
+      if (type === "star") {
+        triangle(0, -bloom * 1.12, -petalWidth * 0.34, -bloom * 0.18, petalWidth * 0.34, -bloom * 0.18);
+        return;
+      }
+
+      if (type === "organic") {
+        beginShape();
+        vertex(0, -bloom * 1.02);
+        bezierVertex(petalWidth * 0.52, -bloom * 0.9, petalWidth * 0.62, -bloom * 0.34, petalWidth * 0.16, -bloom * 0.12);
+        bezierVertex(-petalWidth * 0.34, -bloom * 0.25, -petalWidth * 0.5, -bloom * 0.72, 0, -bloom * 1.02);
+        endShape(CLOSE);
+        return;
+      }
+
+      if (type === "layered") {
+        ellipse(0, -bloom * 0.6, petalWidth, petalHeight);
+        fill("rgba(255, 255, 255, 0.28)");
+        ellipse(0, -bloom * 0.48, petalWidth * 0.62, petalHeight * 0.62);
+        return;
+      }
+
+      if (type === "wide") {
+        ellipse(0, -bloom * 0.48, petalWidth * 1.28, petalHeight * 0.84);
+        return;
+      }
+
+      if (type === "thin") {
+        ellipse(0, -bloom * 0.68, petalWidth * 0.58, petalHeight * 1.1);
+        return;
+      }
+
+      if (type === "compact") {
+        ellipse(0, -bloom * 0.42, petalWidth * 0.92, petalHeight * 0.76);
+        return;
+      }
+
+      ellipse(0, -bloom * 0.54, petalWidth, petalHeight);
+    }
+
+    function drawStemLeaves(flower, stem) {
+      let hovered = null;
+
+      for (const leaf of flower.leaves) {
+        const anchor = pointOnStem(stem, leaf.progress);
+        const tangent = tangentOnStem(stem, leaf.progress);
+        const normal = { x: -tangent.y * leaf.side, y: tangent.x * leaf.side };
+        const upwardBias = 0.28 + leaf.progress * 0.22;
+        const naturalBend = sin(leaf.progress * PI + flower.phase) * 0.1;
+        const growth = {
+          x: normal.x * (0.78 + naturalBend) + tangent.x * upwardBias,
+          y: normal.y * (0.78 + naturalBend) + tangent.y * upwardBias
+        };
+        const growthLength = max(1, sqrt(growth.x * growth.x + growth.y * growth.y));
+        growth.x /= growthLength;
+        growth.y /= growthLength;
+
+        const branchLength = 13 + leaf.width * 0.16;
+        const baseX = anchor.x + growth.x * branchLength;
+        const baseY = anchor.y + growth.y * branchLength;
+        const tipX = baseX + growth.x * leaf.width;
+        const tipY = baseY + growth.y * leaf.width;
+        const angle = atan2(growth.y, growth.x) + leaf.side * 0.08 + sin(frameCount * flower.sway + flower.phase) * 0.05;
+
+        strokeCap(ROUND);
+        stroke("#557052");
+        strokeWeight(3.2);
+        line(anchor.x, anchor.y, anchor.x + growth.x * 8, anchor.y + growth.y * 8);
+        strokeWeight(2.2);
+        bezier(
+          anchor.x,
+          anchor.y,
+          anchor.x + normal.x * 7 + tangent.x * 4,
+          anchor.y + normal.y * 7 + tangent.y * 4,
+          anchor.x + growth.x * branchLength * 0.55 - tangent.x * 2,
+          anchor.y + growth.y * branchLength * 0.55 - tangent.y * 2,
+          baseX,
+          baseY
+        );
+        strokeCap(SQUARE);
+
+        push();
+        translate(baseX - growth.x * 3, baseY - growth.y * 3);
+        rotate(angle);
+        noStroke();
+        fill("#6d9b68");
+        drawOrganicLeaf(leaf.width, leaf.height);
+        pop();
+
+        if (leaf.label && dist(mouseX, mouseY, tipX, tipY) < leaf.width * 0.62) {
+          hovered = leaf.label;
+        }
+      }
+
+      return hovered;
+    }
+
+    function drawOrganicLeaf(leafWidth, leafHeight) {
+      beginShape();
+      vertex(0, 0);
+      bezierVertex(leafWidth * 0.22, -leafHeight * 0.82, leafWidth * 0.76, -leafHeight * 0.62, leafWidth, -leafHeight * 0.06);
+      bezierVertex(leafWidth * 0.72, leafHeight * 0.58, leafWidth * 0.24, leafHeight * 0.48, 0, 0);
+      endShape(CLOSE);
+
+      fill("rgba(255, 255, 255, 0.16)");
+      beginShape();
+      vertex(leafWidth * 0.28, -leafHeight * 0.04);
+      bezierVertex(leafWidth * 0.46, -leafHeight * 0.2, leafWidth * 0.68, -leafHeight * 0.15, leafWidth * 0.78, -leafHeight * 0.02);
+      bezierVertex(leafWidth * 0.58, leafHeight * 0.08, leafWidth * 0.4, leafHeight * 0.09, leafWidth * 0.28, -leafHeight * 0.04);
+      endShape(CLOSE);
+    }
+  </script>
+</body>
+</html>

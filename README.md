@@ -1,2 +1,18 @@
-# birthday-card
-Interactive animated greeting card 
+# Открытка для Веры
+
+Интерактивная анимированная открытка-сад.
+
+## Как опубликовать на GitHub Pages
+
+1. Создайте новый репозиторий на GitHub.
+2. Загрузите в него файл `index.html`.
+3. Откройте `Settings` -> `Pages`.
+4. В `Build and deployment` выберите `Deploy from a branch`.
+5. Выберите ветку `main` и папку `/root`.
+6. Сохраните настройки.
+
+Через минуту GitHub покажет ссылку вида:
+
+`https://username.github.io/repository-name/`
+
+По этой ссылке открытка откроется сразу в браузере.
